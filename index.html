@@ -1,424 +1,1350 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>UPS Store Operations Master Scheduler</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5f5f5;color:#222}
-header{background:#4a2c1d;color:#fff;padding:20px}
-header h1{margin:0}
-header p{margin-top:8px}
-.tabs{display:flex;overflow-x:auto;background:#efeae2;border-bottom:3px solid #f4b400}
-.tabs button{padding:14px 18px;border:none;background:transparent;cursor:pointer;font-weight:bold;white-space:nowrap}
-.tabs button.active{background:#fff;color:#0b66d1;border-bottom:3px solid #0b66d1}
-.tab-content{display:none;padding:20px}
-.tab-content.active{display:block}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-bottom:20px}
-.card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
-.big-number{font-size:32px;font-weight:bold;color:#1b5fb5}
-.green{color:#1e7d3b}
-.table-wrap{overflow-x:auto}
-.schedule-table{width:100%;border-collapse:collapse;background:#fff}
-.schedule-table th,.schedule-table td{border:1px solid #ddd;padding:10px;text-align:center}
-.schedule-table th{background:#f2ede5}
-input[type=time],input[type=number]{width:100%;padding:6px}
-.summary-box{background:#fff;padding:20px;border-radius:12px;margin-top:20px}
-@media(max-width:768px){
-.big-number{font-size:24px}
-.tabs button{font-size:14px;padding:12px}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UPS Store Operations Master Scheduler</title>
+  <style>
+    :root {
+      --brown: #5b351f;
+      --gold: #f7b928;
+      --blue: #256fb8;
+      --green: #287547;
+      --orange: #ba6500;
+      --red: #b3261e;
+      --ink: #2b2926;
+      --muted: #726c64;
+      --line: #e3ddd4;
+      --panel: #ffffff;
+      --bg: #fbf8f2;
+      --soft-blue: #edf6ff;
+      --soft-green: #edf8f0;
+      --soft-orange: #fff5df;
+      --soft-red: #fff0ef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .shell {
+      width: min(1500px, calc(100% - 24px));
+      margin: 16px auto 32px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 14px 36px rgba(91, 53, 31, 0.10);
+    }
+
+    header {
+      background: linear-gradient(180deg, #fff8e7 0%, #fff 100%);
+      color: var(--brown);
+      padding: 20px 24px;
+      border-bottom: 5px solid var(--gold);
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 0;
+      color: #75533b;
+      font-size: 14px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      background: #f4efe7;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      border: 0;
+      border-right: 1px solid var(--line);
+      background: transparent;
+      padding: 14px 18px;
+      cursor: pointer;
+      color: #5f574e;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      background: #fffaf0;
+      color: var(--blue);
+      box-shadow: inset 0 -3px 0 var(--blue);
+    }
+
+    main { padding: 24px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    p { line-height: 1.45; }
+
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .stat {
+      background: #fffdf8;
+      border-left: 5px solid var(--blue);
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 25px;
+      color: var(--blue);
+    }
+
+    .success { color: var(--green); }
+    .warning { color: var(--orange); }
+    .danger { color: var(--red); }
+
+    .banner {
+      border-left: 5px solid var(--orange);
+      background: var(--soft-orange);
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin: 16px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    .wide-table { min-width: 1500px; }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 10px;
+      vertical-align: top;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      background: #fbf6ec;
+      color: #4b4239;
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+
+    tfoot td {
+      background: #fbf6ec;
+      font-weight: 800;
+    }
+
+    input[type="time"],
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      min-width: 74px;
+      border: 1px solid #d6cec3;
+      border-radius: 6px;
+      padding: 7px 8px;
+      font: inherit;
+      background: #fff;
+    }
+
+    input[type="number"] { min-width: 82px; }
+
+    .person-cell {
+      min-width: 150px;
+      font-weight: 800;
+    }
+
+    .role-cell { min-width: 110px; }
+    .rate-cell { min-width: 110px; }
+
+    .shift-cell {
+      width: 92px;
+      min-width: 92px;
+    }
+
+    .day-note {
+      margin-top: 6px;
+      min-height: 16px;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .pill.green { background: var(--soft-green); color: var(--green); }
+    .pill.orange { background: var(--soft-orange); color: var(--orange); }
+    .pill.red { background: var(--soft-red); color: var(--red); }
+    .pill.blue { background: var(--soft-blue); color: var(--blue); }
+
+    .manager-row td { background: #fffaf0; }
+    .changed { background: #fff8d8 !important; }
+    .off-label { color: #9b9288; font-size: 12px; margin-top: 7px; }
+
+    .heat-ok { background: var(--soft-green); color: var(--green); font-weight: 800; }
+    .heat-low { background: var(--soft-red); color: var(--red); font-weight: 800; }
+    .heat-high { background: var(--soft-orange); color: var(--orange); font-weight: 800; }
+    .heat-neutral { background: #f9f7f4; color: #514b45; }
+
+    .coverage-list {
+      display: block;
+      color: #5c554d;
+      font-weight: 500;
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 16px 0;
+    }
+
+    button.action {
+      border: 1px solid #c9bfae;
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    button.action.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    button.action:hover {
+      background: #f0f0f0;
+    }
+
+    button.action.primary:hover {
+      background: #1a4a8a;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .source-list a { color: var(--blue); }
+
+    .github-status {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #f0f0f0;
+      color: #666;
+    }
+
+    .github-status.saved {
+      background: var(--soft-green);
+      color: var(--green);
+    }
+
+    .github-status.saving {
+      background: var(--soft-orange);
+      color: var(--orange);
+    }
+
+    .github-status.error {
+      background: var(--soft-red);
+      color: var(--red);
+    }
+
+    @media (max-width: 850px) {
+      .shell { width: 100%; margin: 0; border-radius: 0; }
+      main { padding: 16px; }
+      .two-col { grid-template-columns: 1fr; }
+      header h1 { font-size: 22px; }
+      .stat strong { font-size: 21px; }
+      .tabs { scroll-snap-type: x proximity; }
+      .tab { scroll-snap-align: start; padding: 13px 15px; }
+      .grid { grid-template-columns: 1fr; }
+      .table-wrap::before {
+        content: "Swipe table left/right";
+        display: block;
+        position: sticky;
+        left: 0;
+        padding: 8px 10px;
+        background: #fffaf0;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        font-weight: 800;
+      }
+      input[type="time"],
+      input[type="number"],
+      input[type="text"],
+      select {
+        min-height: 40px;
+      }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .shell { box-shadow: none; width: 100%; margin: 0; border: 0; }
+      .tabs, .toolbar { display: none; }
+      .section { display: block; page-break-after: always; }
+      main { padding: 0; }
+    }
+  </style>
 </head>
 <body>
+  <noscript>
+    <div style="margin: 16px 24px; padding: 14px 16px; border-radius: 8px; border-left: 5px solid #b3261e; background: #fff0ef; color: #b3261e; font-weight: 800;">
+      This dashboard needs JavaScript. Open the HTML file in Safari, Chrome, or Edge instead of a text/file preview.
+    </div>
+  </noscript>
+  <div class="shell">
+    <header>
+      <h1>UPS Store Operations Master Scheduler</h1>
+      <p>Editable master schedule with automatic payroll, floor coverage, financial analysis, and Connecticut compliance checks.</p>
+      <div style="margin-top: 10px; font-size: 12px;">
+        <span id="githubStatus" class="github-status">Ready</span>
+      </div>
+    </header>
 
-<header>
-<h1>UPS Store Operations Master Scheduler</h1>
-<p>Editable master schedule with automatic payroll, coverage, financial analysis, and CT compliance checks.</p>
-</header>
+    <nav class="tabs" aria-label="Dashboard tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="master">Master Schedule</button>
+      <button class="tab" data-tab="heatmap">Floor Coverage Heatmap</button>
+      <button class="tab" data-tab="payroll">Weekly Payroll Breakdown</button>
+      <button class="tab" data-tab="analysis">Financial Analysis</button>
+      <button class="tab" data-tab="compliance">CT Compliance Report</button>
+      <button class="tab" data-tab="timetables">Employee Timetables</button>
+    </nav>
 
-<div class="tabs">
-<button class="tab-btn active" data-tab="overview">Overview</button>
-<button class="tab-btn" data-tab="schedule">Master Schedule</button>
-<button class="tab-btn" data-tab="payroll">Payroll Breakdown</button>
-<button class="tab-btn" data-tab="financial">Financial Analysis</button>
-<button class="tab-btn" data-tab="compliance">CT Compliance</button>
-</div>
+    <main>
+      <section id="overview" class="section active">
+        <h2>Executive Summary</h2>
+        <p class="muted">Every time you change a start or end time, the dashboard recalculates worked hours, CT payable hours, overtime, weekly payroll, annual projection, and coverage status.</p>
 
-<div id="overview" class="tab-content active">
-<div class="cards">
-<div class="card"><h3>Weekly Payroll</h3><div class="big-number" id="weeklyPayroll">$0</div></div>
-<div class="card"><h3>Annual Payroll</h3><div class="big-number" id="annualPayroll">$0</div></div>
-<div class="card"><h3>Total Hours</h3><div class="big-number" id="totalHours">0</div></div>
-<div class="card"><h3>Savings</h3><div class="big-number green" id="savings">$0</div></div>
-</div>
-</div>
+        <div class="grid">
+          <div class="card stat">Weekly payroll<strong id="overviewWeekly">$0.00</strong></div>
+          <div class="card stat">Annual payroll<strong id="overviewAnnual">$0.00</strong></div>
+          <div class="card stat">Total worked hours<strong id="overviewWorked">0.00</strong></div>
+          <div class="card stat">Coverage status<strong id="overviewCoverage">Checking</strong></div>
+          <div class="card stat">Loaded savings<strong id="overviewLoadedSavings">$0.00</strong></div>
+        </div>
 
-<div id="schedule" class="tab-content">
-<div class="cards">
-<div class="card">
-<label>Payroll Baseline</label>
-<input type="number" id="baselinePayroll" value="185000"/>
-</div>
-<div class="card">
-<label>Employer Add-On %</label>
-<input type="number" id="employerAddon" value="10.35"/>
-</div>
-<div class="card">
-<label>CT Minimum Wage</label>
-<input type="number" id="ctMinimum" value="16.94"/>
-</div>
-<div class="card">
-<button id="saveBtn" style="padding:12px 24px;background:#0b66d1;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer;width:100%;height:fit-content">💾 Save to GitHub</button>
-<span id="saveStatus" style="display:block;margin-top:10px;font-size:12px;text-align:center"></span>
-</div>
-</div>
+        <div class="banner">
+          <strong>Smart schedule target:</strong> Peak hours are built for exactly 3 people on the floor, including the manager on weekdays. Cody is removed from the active plan, and a lower-cost new hire covers opening support plus weekend peak support without pushing any peak day above 3 people.
+        </div>
 
-<div class="table-wrap">
-<table class="schedule-table" id="scheduleTable">
-<thead>
-<tr>
-<th>Employee</th>
-<th>Type</th>
-<th>Rate</th>
-<th>Mon</th>
-<th>Tue</th>
-<th>Wed</th>
-<th>Thu</th>
-<th>Fri</th>
-<th>Sat</th>
-<th>Sun</th>
-<th>Total Hours</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-</div>
-</div>
+        <div class="two-col">
+          <div class="card">
+            <h3>Best Features Combined</h3>
+            <p>From the detailed schedule file: editable daily start/end times and automatic payroll refresh.</p>
+            <p>From the store ops files: richer budget, annual projection, compliance, and heatmap reporting.</p>
+            <p>From the payroll calculator files: savings target and employer cost view.</p>
+            <p><strong>Smart staffing update:</strong> Cody is removed from active schedule. New Hire is added at CT minimum wage for savings-focused support.</p>
+          </div>
+          <div class="card">
+            <h3>Current Compliance Snapshot</h3>
+            <div id="overviewCompliance">Checking schedule...</div>
+          </div>
+        </div>
+      </section>
 
-<div id="payroll" class="tab-content">
-<div class="table-wrap">
-<table class="schedule-table" id="payrollTable">
-<thead>
-<tr>
-<th>Employee</th>
-<th>Hours</th>
-<th>Weekly Pay</th>
-<th>Annual Projection</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-</div>
-</div>
+      <section id="master" class="section">
+        <h2>Master Schedule</h2>
+        <p class="muted">Make the schedule by entering start and end time for each day. Blank start or end means the person is off that day.</p>
 
-<div id="financial" class="tab-content">
-<div class="cards">
-<div class="card"><h3>Employer Loaded Cost</h3><div class="big-number" id="loadedCost">$0</div></div>
-<div class="card"><h3>Budget Result</h3><div class="big-number green" id="budgetResult">$0</div></div>
-</div>
-</div>
+        <div class="toolbar">
+          <button class="action primary" id="saveBaseline">Set Current Schedule As New Master</button>
+          <button class="action" id="restoreDefault">Restore Starting Schedule</button>
+          <button class="action" id="saveToGithub">💾 Save to GitHub</button>
+          <button class="action" onclick="window.print()">Print</button>
+        </div>
 
-<div id="compliance" class="tab-content">
-<div class="summary-box" id="complianceContent"></div>
-</div>
+        <div class="card">
+          <h3>Budget Controls</h3>
+          <div class="grid">
+            <label>Current annual payroll baseline
+              <input id="currentPayrollInput" type="number" value="185000" step="100">
+            </label>
+            <label>Current loaded employer cost
+              <input id="currentLoadedInput" type="number" value="210000" step="100">
+            </label>
+            <label>Required loaded savings
+              <input id="targetSavingsInput" type="number" value="40000" step="100">
+            </label>
+            <label>Annual budget with employer costs
+              <input id="budgetInput" type="number" value="170000" step="100">
+            </label>
+            <label>Minimum annual payroll target
+              <input id="minimumPayrollInput" type="number" value="50000" step="100">
+            </label>
+            <label>Employer cost add-on
+              <input id="taxInput" type="number" value="10.35" step="0.01">
+            </label>
+            <label>CT minimum wage
+              <input id="minimumWageInput" type="number" value="16.94" step="0.01">
+            </label>
+          </div>
+        </div>
 
-<script>
-const days=['mon','tue','wed','thu','fri','sat','sun'];
+        <div class="table-wrap">
+          <table class="wide-table">
+            <thead>
+              <tr>
+                <th rowspan="2">Staff</th>
+                <th rowspan="2">Type</th>
+                <th rowspan="2">Rate</th>
+                <th colspan="2">Mon</th>
+                <th colspan="2">Tue</th>
+                <th colspan="2">Wed</th>
+                <th colspan="2">Thu</th>
+                <th colspan="2">Fri</th>
+                <th colspan="2">Sat</th>
+                <th colspan="2">Sun</th>
+                <th rowspan="2">Worked</th>
+                <th rowspan="2">Change</th>
+              </tr>
+              <tr>
+                <th>Start</th><th>End</th>
+                <th>Start</th><th>End</th>
+                <th>Start</th><th>End</th>
+                <th>Start</th><th>End</th>
+                <th>Start</th><th>End</th>
+                <th>Start</th><th>End</th>
+                <th>Start</th><th>End</th>
+              </tr>
+            </thead>
+            <tbody id="masterBody"></tbody>
+          </table>
+        </div>
+      </section>
 
-const employees=[
-{
-name:'Store Manager',
-type:'salary',
-annualSalary:61000,
-rate:0,
-shifts:{
-mon:['09:00','18:30'],
-tue:['09:00','18:30'],
-wed:['09:00','18:30'],
-thu:['09:00','18:30'],
-fri:['09:00','18:30'],
-sat:['12:00','18:30'],
-sun:null
-}
-},
-{
-name:'Nejle',
-type:'hourly',
-rate:17,
-shifts:{
-mon:['12:00','18:30'],
-tue:null,
-wed:['12:00','18:30'],
-thu:null,
-fri:null,
-sat:null,
-sun:['12:00','18:30']
-}
-},
-{
-name:'New Hire',
-type:'hourly',
-rate:16.94,
-shifts:{
-mon:['12:00','18:30'],
-tue:['12:00','18:30'],
-wed:null,
-thu:['12:00','18:30'],
-fri:['12:00','18:30'],
-sat:['12:00','18:30'],
-sun:['12:00','18:30']
-}
-}
-];
+      <section id="heatmap" class="section">
+        <h2>Floor Coverage Heatmap</h2>
+        <p class="muted">Note: ideal peak coverage is exactly 3 people including manager on weekdays. More than 3 is marked as overstaffed; fewer than 3 is marked as a gap.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time Block</th>
+                <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+              </tr>
+            </thead>
+            <tbody id="heatmapBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Coverage Notes</h3>
+          <div id="coverageNotes">Checking...</div>
+        </div>
+      </section>
 
-function calculateHours(start,end){
-if(!start||!end)return 0;
-const [sh,sm]=start.split(':').map(Number);
-const [eh,em]=end.split(':').map(Number);
-return ((eh*60+em)-(sh*60+sm))/60;
-}
+      <section id="payroll" class="section">
+        <h2>Weekly Payroll Breakdown</h2>
+        <p class="muted">Shows master hours, current worked hours, automatically changed hours, CT payable hours, overtime, and weekly pay.</p>
+        <div class="grid">
+          <div class="card stat">Current total worked hours<strong id="payrollHoursCard">0.00</strong></div>
+          <div class="card stat">Current CT payable hours<strong id="payrollPayableCard">0.00</strong></div>
+          <div class="card stat">Hours changed from master<strong id="payrollChangedCard">0.00</strong></div>
+          <div class="card stat">Loaded employer cost<strong id="payrollLoadedCard">$0.00</strong></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Type</th>
+                <th>Rate</th>
+                <th>Master Hours</th>
+                <th>Current Worked Hours</th>
+                <th>Changed Hours</th>
+                <th>CT Payable Hours</th>
+                <th>Overtime Hours</th>
+                <th>Weekly Pay</th>
+                <th>Annual Projection</th>
+              </tr>
+            </thead>
+            <tbody id="payrollBody"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4">Totals</td>
+                <td id="payrollWorkedTotal">0.00</td>
+                <td id="payrollChangedTotal">0.00</td>
+                <td id="payrollPayableTotal">0.00</td>
+                <td id="payrollOtTotal">0.00</td>
+                <td id="payrollWeeklyTotal">$0.00</td>
+                <td id="payrollAnnualTotal">$0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
 
-function getEmployeeHours(emp){
-let total=0;
-days.forEach(day=>{
-const shift=emp.shifts[day];
-if(shift){total+=calculateHours(shift[0],shift[1]);}
-});
-return total;
-}
+      <section id="analysis" class="section">
+        <h2>Financial & Compliance Analysis</h2>
+        <div class="grid">
+          <div class="card stat">Annual payroll<strong id="analysisAnnual">$0.00</strong></div>
+          <div class="card stat">Employer cost estimate<strong id="analysisLoaded">$0.00</strong></div>
+          <div class="card stat">Budget result<strong id="analysisBudget">Checking</strong></div>
+          <div class="card stat">Savings vs $210K loaded<strong id="analysisSavings">$0.00</strong></div>
+          <div class="card stat">$40K savings target<strong id="analysisTarget">Checking</strong></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <h3>Cost Drivers</h3>
+            <div id="costDrivers"></div>
+          </div>
+          <div class="card">
+            <h3>Change Summary</h3>
+            <div id="changeSummary"></div>
+          </div>
+        </div>
+      </section>
 
-function getWeeklyPay(emp){
-if(emp.type==='salary'){return emp.annualSalary/52;}
-return getEmployeeHours(emp)*emp.rate;
-}
+      <section id="compliance" class="section">
+        <h2>Connecticut Labor Law Compliance Report</h2>
+        <p class="muted">This report is an operational checklist, not legal advice. It uses the rules configured in this file and official CT DOL references listed below.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Rule</th><th>Status</th><th>Details</th></tr>
+            </thead>
+            <tbody id="complianceBody"></tbody>
+          </table>
+        </div>
+        <div class="card source-list">
+          <h3>Official CT References Read</h3>
+          <p><a href="https://portal.ct.gov/dol/divisions/wage-and-workplace-standards" target="_blank">CT Department of Labor Wage and Workplace Standards</a>: current minimum wage list, including $16.94 effective January 1, 2026.</p>
+          <p><a href="https://portal.ct.gov/dol/divisions/wage-and-workplace-standards/wage-and-hour" target="_blank">CT Wage and Hour - Minimum Wage and Overtime</a>: overtime after 40 hours in the workweek and recordkeeping expectations.</p>
+          <p><a href="https://portal.ct.gov/dol/-/media/dol/2022-new-design-system/divisions/wage-and-workplace-standards/dol-78_mercantile_2026.pdf" target="_blank">CT Mercantile Trade Wage Order poster</a>: minimum daily earnings guarantee for covered mercantile employees.</p>
+        </div>
+      </section>
 
-function updateShift(index,day,pos,val){
-employees[index].shifts[day][pos]=val;
-refreshAll();
-}
+      <section id="timetables" class="section">
+        <h2>Employee Timetables</h2>
+        <div id="timetableGrid" class="grid"></div>
+      </section>
+    </main>
+  </div>
 
-function addShift(index,day){
-employees[index].shifts[day]=['12:00','18:30'];
-refreshAll();
-}
+  <script>
+    const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const BLOCKS = [
+      { key: "morning", label: "Morning", start: "08:00", end: "12:00" },
+      { key: "peak", label: "Peak", start: "12:00", end: "18:30" },
+      { key: "evening", label: "Evening", start: "18:30", end: "20:00" }
+    ];
 
-function renderSchedule(){
-const tbody=document.querySelector('#scheduleTable tbody');
-tbody.innerHTML='';
+    const originalStaff = [
+      {
+        name: "Store Manager",
+        type: "salary",
+        role: "Manager",
+        rate: 61000,
+        manager: true,
+        shifts: [
+          ["09:00", "18:30"],
+          ["09:00", "18:30"],
+          ["09:00", "18:30"],
+          ["09:00", "18:30"],
+          ["09:00", "18:30"],
+          ["12:00", "18:30"],
+          ["", ""]
+        ]
+      },
+      {
+        name: "Nejle",
+        type: "hourly",
+        role: "Peak/Backup",
+        rate: 17.00,
+        shifts: [
+          ["12:00", "18:30"],
+          ["", ""],
+          ["12:00", "18:30"],
+          ["", ""],
+          ["", ""],
+          ["", ""],
+          ["12:00", "18:30"]
+        ]
+      },
+      {
+        name: "Drew",
+        type: "hourly",
+        role: "Peak Lead",
+        rate: 19.08,
+        shifts: [
+          ["", ""],
+          ["", ""],
+          ["", ""],
+          ["", ""],
+          ["12:00", "18:30"],
+          ["", ""],
+          ["12:00", "18:30"]
+        ]
+      },
+      {
+        name: "Autumn",
+        type: "hourly",
+        role: "Part-Time",
+        rate: 18.00,
+        shifts: [
+          ["", ""],
+          ["12:00", "18:30"],
+          ["", ""],
+          ["12:00", "18:30"],
+          ["", ""],
+          ["", ""],
+          ["", ""]
+        ]
+      },
+      {
+        name: "John",
+        type: "hourly",
+        role: "Admin/Backup",
+        rate: 17.75,
+        shifts: [
+          ["", ""],
+          ["", ""],
+          ["12:00", "18:30"],
+          ["", ""],
+          ["", ""],
+          ["12:00", "18:30"],
+          ["", ""]
+        ]
+      },
+      {
+        name: "New Hire",
+        type: "hourly",
+        role: "Opening / Weekend Savings",
+        rate: 16.94,
+        shifts: [
+          ["12:00", "18:30"],
+          ["12:00", "18:30"],
+          ["", ""],
+          ["12:00", "18:30"],
+          ["12:00", "18:30"],
+          ["12:00", "18:30"],
+          ["12:00", "18:30"]
+        ]
+      },
+    ];
 
-employees.forEach((emp,index)=>{
-const tr=document.createElement('tr');
-
-let html=`
-<td>${emp.name}</td>
-<td>${emp.type}</td>
-<td>${emp.type==='salary'?'$'+emp.annualSalary+'/yr':'$'+emp.rate+'/hr'}</td>
-`;
-
-days.forEach(day=>{
-const shift=emp.shifts[day];
-html+='<td>';
-
-if(shift){
-html+=`
-<input type="time" value="${shift[0]}" onchange="updateShift(${index},'${day}',0,this.value)">
-<input type="time" value="${shift[1]}" onchange="updateShift(${index},'${day}',1,this.value)">
-`;
-}else{
-html+=`<button onclick="addShift(${index},'${day}')">Add</button>`;
-}
-html+='</td>';
-});
-
-html+=`<td>${getEmployeeHours(emp).toFixed(2)}</td>`;
-tr.innerHTML=html;
-tbody.appendChild(tr);
-});
-}
-
-function renderOverview(){
-let weeklyPayroll=0;
-let totalHours=0;
-
-employees.forEach(emp=>{
-weeklyPayroll+=getWeeklyPay(emp);
-totalHours+=getEmployeeHours(emp);
-});
-
-const annualPayroll=weeklyPayroll*52;
-const addon=parseFloat(document.getElementById('employerAddon').value);
-const baseline=parseFloat(document.getElementById('baselinePayroll').value);
-
-const loadedCost=annualPayroll*(1+addon/100);
-const savings=baseline-loadedCost;
-
-document.getElementById('weeklyPayroll').innerText='$'+weeklyPayroll.toFixed(2);
-document.getElementById('annualPayroll').innerText='$'+annualPayroll.toFixed(2);
-document.getElementById('totalHours').innerText=totalHours.toFixed(2);
-document.getElementById('savings').innerText='$'+savings.toFixed(2);
-
-document.getElementById('loadedCost').innerText='$'+loadedCost.toFixed(2);
-document.getElementById('budgetResult').innerText=savings>=0?'$'+savings.toFixed(2)+' Left':'$'+Math.abs(savings).toFixed(2)+' Over';
-}
-
-function renderPayroll(){
-const tbody=document.querySelector('#payrollTable tbody');
-tbody.innerHTML='';
-
-employees.forEach(emp=>{
-const tr=document.createElement('tr');
-const hours=getEmployeeHours(emp);
-const weekly=getWeeklyPay(emp);
-
-tr.innerHTML=`
-<td>${emp.name}</td>
-<td>${hours.toFixed(2)}</td>
-<td>$${weekly.toFixed(2)}</td>
-<td>$${(weekly*52).toFixed(2)}</td>
-`;
-tbody.appendChild(tr);
-});
-}
-
-function renderCompliance(){
-const container=document.getElementById('complianceContent');
-const minWage=parseFloat(document.getElementById('ctMinimum').value);
-
-let html='<h2>Compliance Checks</h2>';
-
-employees.forEach(emp=>{
-if(emp.type==='hourly'){
-const pass=emp.rate>=minWage;
-html+=`<p>${emp.name}: <strong>${pass?'PASS':'FAIL'}</strong> Minimum Wage Check</p>`;
-}
-const hours=getEmployeeHours(emp);
-if(hours>40){
-html+=`<p><strong>${emp.name}</strong> overtime warning: ${hours.toFixed(2)} hours</p>`;
-}
-});
-
-container.innerHTML=html;
-}
-
-function refreshAll(){
-renderSchedule();
-renderOverview();
-renderPayroll();
-renderCompliance();
-localStorage.setItem('upsSchedulerData',JSON.stringify(employees));
-}
-
-function loadSaved(){
-const saved=localStorage.getItem('upsSchedulerData');
-if(saved){
-const parsed=JSON.parse(saved);
-parsed.forEach((emp,i)=>employees[i]=emp);
-}
-}
-
-loadSaved();
-refreshAll();
-
-const tabs=document.querySelectorAll('.tab-btn');
-tabs.forEach(btn=>{
-btn.addEventListener('click',()=>{
-document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-btn.classList.add('active');
-document.getElementById(btn.dataset.tab).classList.add('active');
-});
-});
-
-['baselinePayroll','employerAddon','ctMinimum'].forEach(id=>{
-document.getElementById(id).addEventListener('input',refreshAll);
-});
-
-// GitHub Integration
-const GITHUB_CONFIG = {
-  owner: 'patelbhagyesh007',
-  repo: 'MasterSchedule',
-  branch: 'main',
-  token: localStorage.getItem('githubToken') || ''
-};
-
-async function saveToGitHub() {
-  const btn = document.getElementById('saveBtn');
-  const status = document.getElementById('saveStatus');
-  
-  if (!GITHUB_CONFIG.token) {
-    const token = prompt('Enter your GitHub Personal Access Token (https://github.com/settings/tokens):\nToken needs: repo scope');
-    if (!token) return;
-    GITHUB_CONFIG.token = token;
-    localStorage.setItem('githubToken', token);
-  }
-
-  btn.disabled = true;
-  status.innerText = 'Saving...';
-  status.style.color = '#ff9c00';
-
-  try {
-    const data = JSON.stringify(employees, null, 2);
-    const fileName = 'schedule_data.json';
-    const content = btoa(unescape(encodeURIComponent(data)));
-    
-    // Get current file SHA if exists
-    let sha = null;
-    try {
-      const existingResponse = await fetch(
-        `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${fileName}`,
-        { headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` } }
-      );
-      if (existingResponse.ok) {
-        sha = (await existingResponse.json()).sha;
-      }
-    } catch (e) {}
-
-    const payload = {
-      message: `Update master schedule - ${new Date().toLocaleString()}`,
-      content: content,
-      branch: GITHUB_CONFIG.branch,
-      ...(sha && { sha })
+    // GitHub Configuration
+    const GITHUB_CONFIG = {
+      owner: 'patelbhagyesh007',
+      repo: 'MasterSchedule',
+      branch: 'main',
+      token: localStorage.getItem('githubToken') || ''
     };
 
-    const response = await fetch(
-      `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${fileName}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `token ${GITHUB_CONFIG.token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      }
-    );
+    let autoSaveTimer = null;
 
-    if (response.ok) {
-      status.innerText = '✓ Saved to GitHub';
-      status.style.color = '#1e7d3b';
-      setTimeout(() => { status.innerText = ''; btn.disabled = false; }, 2000);
-    } else {
-      throw new Error(`GitHub API error: ${response.status}`);
+    function cloneData(data) {
+      return JSON.parse(JSON.stringify(data));
     }
-  } catch (error) {
-    status.innerText = '✗ Error: ' + error.message;
-    status.style.color = '#d61e3e';
-    btn.disabled = false;
-  }
-}
 
-// Save button click
-document.getElementById('saveBtn').addEventListener('click', saveToGitHub);
+    let staff = cloneData(originalStaff);
+    let baselineHours = [];
+    let baselineWeeklyPayroll = 0;
 
-// Auto-save to GitHub every 5 minutes
-setInterval(() => {
-  if (GITHUB_CONFIG.token) {
-    console.log('Auto-saving to GitHub...');
-    saveToGitHub();
-  }
-}, 5 * 60 * 1000);
-</script>
+    const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function toMinutes(time) {
+      if (!time) return null;
+      const parts = time.split(":").map(Number);
+      return parts[0] * 60 + parts[1];
+    }
+
+    function hoursBetween(start, end) {
+      const startMin = toMinutes(start);
+      const endMin = toMinutes(end);
+      if (startMin === null || endMin === null || endMin <= startMin) return 0;
+      return Math.round(((endMin - startMin) / 60) * 100) / 100;
+    }
+
+    function overlaps(start, end, blockStart, blockEnd) {
+      const s = toMinutes(start);
+      const e = toMinutes(end);
+      const bs = toMinutes(blockStart);
+      const be = toMinutes(blockEnd);
+      if (s === null || e === null || e <= s) return false;
+      return s < be && e > bs;
+    }
+
+    function readSettings() {
+      return {
+        currentAnnualPayroll: Number(byId("currentPayrollInput").value) || 0,
+        currentLoadedCost: Number(byId("currentLoadedInput").value) || 0,
+        targetSavings: Number(byId("targetSavingsInput").value) || 0,
+        budget: Number(byId("budgetInput").value) || 0,
+        minimumAnnualPayroll: Number(byId("minimumPayrollInput").value) || 0,
+        employerCostPercent: Number(byId("taxInput").value) || 0,
+        minimumWage: Number(byId("minimumWageInput").value) || 0
+      };
+    }
+
+    function calculateEmployee(person, index, useDom) {
+      const settings = readSettings();
+      let worked = 0;
+      let payable = 0;
+      let shiftUnder4 = 0;
+      let minimumImpact = 0;
+      let invalidShifts = [];
+      let daily = [];
+
+      DAYS.forEach((day, dayIndex) => {
+        const start = useDom ? byId(`s_${index}_${dayIndex}`).value : person.shifts[dayIndex][0];
+        const end = useDom ? byId(`e_${index}_${dayIndex}`).value : person.shifts[dayIndex][1];
+        const hrs = hoursBetween(start, end);
+        let payHrs = hrs;
+        let warning = "";
+
+        if ((start && !end) || (!start && end)) {
+          invalidShifts.push(`${day}: missing ${start ? "end" : "start"} time`);
+        }
+
+        if (start && end && hrs === 0) {
+          invalidShifts.push(`${day}: end time must be after start time`);
+        }
+
+        if (hrs > 0 && person.type === "hourly" && hrs < 4) {
+          payHrs = 4;
+          shiftUnder4 += 1;
+          minimumImpact += (4 - hrs) * person.rate;
+          warning = `CT 4-hour minimum: paid ${payHrs.toFixed(2)}h`;
+        }
+
+        worked += hrs;
+        payable += person.type === "salary" ? 0 : payHrs;
+        daily.push({ day, start, end, worked: hrs, payable: payHrs, warning });
+      });
+
+      let overtime = 0;
+      let weeklyPay = 0;
+
+      if (person.type === "salary") {
+        weeklyPay = person.rate / 52;
+      } else {
+        overtime = Math.max(0, payable - 40);
+        const regularHours = payable - overtime;
+        weeklyPay = (regularHours * person.rate) + (overtime * person.rate * 1.5);
+      }
+
+      return {
+        person,
+        index,
+        worked,
+        payable,
+        overtime,
+        weeklyPay,
+        annualPay: weeklyPay * 52,
+        shiftUnder4,
+        minimumImpact,
+        invalidShifts,
+        belowMinimumWage: person.type === "hourly" && person.rate < settings.minimumWage,
+        daily
+      };
+    }
+
+    function renderMaster() {
+      const body = byId("masterBody");
+      body.innerHTML = "";
+
+      staff.forEach((person, personIndex) => {
+        const tr = document.createElement("tr");
+        if (person.manager) tr.className = "manager-row";
+
+        const rateLabel = person.type === "salary" ? `${money.format(person.rate)}/yr` : `${money.format(person.rate)}/hr`;
+        tr.innerHTML = `
+          <td class="person-cell">${person.name}<div class="muted">${person.role}</div></td>
+          <td class="role-cell">${person.type === "salary" ? "Salary" : "Hourly"}</td>
+          <td class="rate-cell">${rateLabel}</td>
+        `;
+
+        DAYS.forEach((day, dayIndex) => {
+          const startTd = document.createElement("td");
+          const endTd = document.createElement("td");
+          startTd.className = "shift-cell";
+          endTd.className = "shift-cell";
+
+          startTd.innerHTML = `<input type="time" id="s_${personIndex}_${dayIndex}" value="${person.shifts[dayIndex][0]}" aria-label="${person.name} ${day} start">`;
+          endTd.innerHTML = `
+            <input type="time" id="e_${personIndex}_${dayIndex}" value="${person.shifts[dayIndex][1]}" aria-label="${person.name} ${day} end">
+            <div class="day-note" id="note_${personIndex}_${dayIndex}"></div>
+          `;
+          tr.appendChild(startTd);
+          tr.appendChild(endTd);
+        });
+
+        const total = document.createElement("td");
+        total.id = `total_${personIndex}`;
+        total.style.fontWeight = "800";
+        total.textContent = "0.00";
+        tr.appendChild(total);
+
+        const change = document.createElement("td");
+        change.id = `change_${personIndex}`;
+        tr.appendChild(change);
+
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", () => {
+          calculateAll();
+          scheduleAutoSave();
+        });
+        input.addEventListener("change", () => {
+          calculateAll();
+          scheduleAutoSave();
+        });
+      });
+    }
+
+    function readScheduleFromDom() {
+      staff.forEach((person, personIndex) => {
+        DAYS.forEach((day, dayIndex) => {
+          person.shifts[dayIndex][0] = byId(`s_${personIndex}_${dayIndex}`).value;
+          person.shifts[dayIndex][1] = byId(`e_${personIndex}_${dayIndex}`).value;
+        });
+      });
+    }
+
+    function buildCoverage(results) {
+      return BLOCKS.map(block => {
+        const days = DAYS.map((day, dayIndex) => {
+          const people = [];
+          let hasManager = false;
+          results.forEach(result => {
+            const shift = result.daily[dayIndex];
+            if (overlaps(shift.start, shift.end, block.start, block.end)) {
+              people.push(result.person.name);
+              if (result.person.manager) hasManager = true;
+            }
+          });
+          return { day, people, count: people.length, hasManager };
+        });
+        return { ...block, days };
+      });
+    }
+
+    function renderHeatmap(coverage) {
+      const body = byId("heatmapBody");
+      body.innerHTML = "";
+      const notes = [];
+
+      coverage.forEach(block => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<th>${block.label}<div class="muted">${block.start}-${block.end}</div></th>`;
+        block.days.forEach((dayData, dayIndex) => {
+          const td = document.createElement("td");
+          let cls = "heat-neutral";
+          let label = `${dayData.count} people`;
+          const isPeak = block.key === "peak";
+
+          if (isPeak) {
+            if (dayData.count < 3) {
+              cls = "heat-low";
+              label += " - gap";
+              notes.push(`${dayData.day} peak is below the 3-person target.`);
+            } else if (dayData.count > 3) {
+              cls = "heat-high";
+              label += " - over 3";
+              notes.push(`${dayData.day} peak has more than 3 people including manager.`);
+            } else {
+              cls = "heat-ok";
+              label += " - target";
+            }
+
+            if (dayIndex < 5 && !dayData.hasManager) {
+              cls = "heat-low";
+              label += " - no manager";
+              notes.push(`${dayData.day} peak does not include the manager.`);
+            }
+          } else if (dayData.count >= 1) {
+            cls = "heat-ok";
+          }
+
+          td.className = cls;
+          td.innerHTML = `${label}<span class="coverage-list">${dayData.people.length ? dayData.people.join(", ") : "No staff"}</span>`;
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+
+      byId("coverageNotes").innerHTML = notes.length
+        ? notes.map(note => `<p class="warning">${note}</p>`).join("")
+        : `<p class="success">Coverage hits the 3-person peak target and weekday peak includes the manager.</p>`;
+
+      byId("overviewCoverage").innerHTML = notes.length
+        ? `<span class="warning">Review needed</span>`
+        : `<span class="success">On target</span>`;
+
+      return notes;
+    }
+
+    function renderPayroll(results) {
+      const settings = readSettings();
+      const body = byId("payrollBody");
+      body.innerHTML = "";
+
+      let workedTotal = 0;
+      let changedTotal = 0;
+      let payableTotal = 0;
+      let overtimeTotal = 0;
+      let weeklyTotal = 0;
+
+      results.forEach(result => {
+        const masterHours = baselineHours[result.index] || 0;
+        const changedHours = result.worked - masterHours;
+        const rate = result.person.type === "salary" ? `${money.format(result.person.rate)}/yr` : `${money.format(result.person.rate)}/hr`;
+        const changeClass = Math.abs(changedHours) >= 0.01 ? "warning" : "muted";
+
+        workedTotal += result.worked;
+        changedTotal += changedHours;
+        payableTotal += result.person.type === "hourly" ? result.payable : 0;
+        overtimeTotal += result.overtime;
+        weeklyTotal += result.weeklyPay;
+
+        body.innerHTML += `
+          <tr>
+            <td>${result.person.name}</td>
+            <td>${result.person.type === "salary" ? "Salary" : "Hourly"}</td>
+            <td>${rate}</td>
+            <td>${masterHours.toFixed(2)}</td>
+            <td>${result.worked.toFixed(2)}</td>
+            <td class="${changeClass}">${changedHours >= 0 ? "+" : ""}${changedHours.toFixed(2)}</td>
+            <td>${result.person.type === "salary" ? "-" : result.payable.toFixed(2)}</td>
+            <td>${result.person.type === "salary" ? "-" : result.overtime.toFixed(2)}</td>
+            <td>${money.format(result.weeklyPay)}</td>
+            <td>${money.format(result.annualPay)}</td>
+          </tr>
+        `;
+      });
+
+      byId("payrollWorkedTotal").textContent = workedTotal.toFixed(2);
+      byId("payrollChangedTotal").textContent = `${changedTotal >= 0 ? "+" : ""}${changedTotal.toFixed(2)}`;
+      byId("payrollPayableTotal").textContent = payableTotal.toFixed(2);
+      byId("payrollOtTotal").textContent = overtimeTotal.toFixed(2);
+      byId("payrollWeeklyTotal").textContent = money.format(weeklyTotal);
+      byId("payrollAnnualTotal").textContent = money.format(weeklyTotal * 52);
+      byId("payrollHoursCard").textContent = workedTotal.toFixed(2);
+      byId("payrollPayableCard").textContent = payableTotal.toFixed(2);
+      byId("payrollChangedCard").textContent = `${changedTotal >= 0 ? "+" : ""}${changedTotal.toFixed(2)}`;
+      byId("payrollLoadedCard").textContent = money.format((weeklyTotal * 52) * (1 + settings.employerCostPercent / 100));
+
+      return { workedTotal, changedTotal, payableTotal, overtimeTotal, weeklyTotal };
+    }
+
+    function renderTimetables(results) {
+      const grid = byId("timetableGrid");
+      grid.innerHTML = "";
+
+      results.forEach(result => {
+        const card = document.createElement("div");
+        card.className = "card";
+        const rows = result.daily.map(shift => {
+          if (!shift.start || !shift.end || shift.worked === 0) {
+            return `<tr><td>${shift.day}</td><td>OFF</td><td>-</td></tr>`;
+          }
+          return `<tr><td>${shift.day}</td><td>${shift.start}-${shift.end}</td><td>${shift.worked.toFixed(2)}h</td></tr>`;
+        }).join("");
+
+        card.innerHTML = `
+          <h3>${result.person.name}</h3>
+          <div class="muted">${result.person.role}</div>
+          <table>
+            <tbody>${rows}</tbody>
+            <tfoot><tr><td colspan="2">Weekly total</td><td>${result.worked.toFixed(2)}h</td></tr></tfoot>
+          </table>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderCompliance(results, coverageNotes, payrollTotals) {
+      const settings = readSettings();
+      const body = byId("complianceBody");
+      body.innerHTML = "";
+
+      const under4 = results.reduce((sum, result) => sum + result.shiftUnder4, 0);
+      const minImpact = results.reduce((sum, result) => sum + result.minimumImpact, 0);
+      const invalids = results.flatMap(result => result.invalidShifts.map(item => `${result.person.name} ${item}`));
+      const belowMinimum = results.filter(result => result.belowMinimumWage).map(result => result.person.name);
+      const overtimePeople = results.filter(result => result.overtime > 0).map(result => `${result.person.name}: ${result.overtime.toFixed(2)}h`);
+
+      const rows = [
+        {
+          rule: "CT minimum wage",
+          ok: belowMinimum.length === 0,
+          status: belowMinimum.length === 0 ? "Pass" : "Review",
+          detail: belowMinimum.length === 0
+            ? `All hourly rates are at or above ${money.format(settings.minimumWage)}/hr.`
+            : `Below minimum wage: ${belowMinimum.join(", ")}.`
+        },
+        {
+          rule: "Mercantile 4-hour minimum daily earnings",
+          ok: true,
+          status: under4 ? "Applied" : "Pass",
+          detail: under4
+            ? `${under4} hourly shift(s) under 4 hours were paid as 4 hours. Weekly payroll impact: ${money.format(minImpact)}.`
+            : "No hourly shifts under 4 hours."
+        },
+        {
+          rule: "Overtime after 40 hours/week",
+          ok: true,
+          status: overtimePeople.length ? "Applied" : "Pass",
+          detail: overtimePeople.length
+            ? `Overtime calculated at 1.5x for ${overtimePeople.join(", ")}.`
+            : "No hourly employee has more than 40 payable hours."
+        },
+        {
+          rule: "Time record completeness",
+          ok: invalids.length === 0,
+          status: invalids.length ? "Review" : "Pass",
+          detail: invalids.length
+            ? invalids.join("; ")
+            : "All entered shifts have both start and end times."
+        },
+        {
+          rule: "Floor coverage target",
+          ok: coverageNotes.length === 0,
+          status: coverageNotes.length ? "Review" : "Pass",
+          detail: coverageNotes.length
+            ? coverageNotes.join(" ")
+            : "Peak coverage hits the 3-person target and includes manager on weekdays."
+        },
+        {
+          rule: "Budget check",
+          ok: true,
+          status: "Calculated",
+          detail: `Weekly payroll is ${money.format(payrollTotals.weeklyTotal)}. Annual payroll is ${money.format(payrollTotals.weeklyTotal * 52)} before employer cost add-on.`
+        }
+      ];
+
+      rows.forEach(row => {
+        const cls = row.ok ? "green" : "orange";
+        body.innerHTML += `
+          <tr>
+            <td><strong>${row.rule}</strong></td>
+            <td><span class="pill ${cls}">${row.status}</span></td>
+            <td>${row.detail}</td>
+          </tr>
+        `;
+      });
+
+      const statusParts = [];
+      if (belowMinimum.length) statusParts.push(`<p class="danger">Minimum wage review: ${belowMinimum.join(", ")}.</p>`);
+      if (under4) statusParts.push(`<p class="warning">${under4} shift(s) use CT 4-hour minimum pay rule.</p>`);
+      if (coverageNotes.length) statusParts.push(`<p class="warning">${coverageNotes.length} coverage item(s) need review.</p>`);
+      if (!statusParts.length) statusParts.push(`<p class="success">Schedule passes the configured payroll and coverage checks.</p>`);
+      byId("overviewCompliance").innerHTML = statusParts.join("");
+    }
+
+    function renderAnalysis(results, payrollTotals) {
+      const settings = readSettings();
+      const annual = payrollTotals.weeklyTotal * 52;
+      const loaded = annual * (1 + settings.employerCostPercent / 100);
+      const payrollSavings = settings.currentAnnualPayroll - annual;
+      const loadedSavings = settings.currentLoadedCost - loaded;
+      const targetLoadedCost = settings.currentLoadedCost - settings.targetSavings;
+      const targetMet = loadedSavings >= settings.targetSavings;
+      const budgetDelta = settings.budget - loaded;
+      const underBudget = budgetDelta >= 0;
+
+      byId("overviewWeekly").textContent = money.format(payrollTotals.weeklyTotal);
+      byId("overviewAnnual").textContent = money.format(annual);
+      byId("overviewWorked").textContent = payrollTotals.workedTotal.toFixed(2);
+      byId("overviewLoadedSavings").innerHTML = loadedSavings >= 0
+        ? `<span class="${targetMet ? "success" : "warning"}">${money.format(loadedSavings)}</span>`
+        : `<span class="danger">-${money.format(Math.abs(loadedSavings))}</span>`;
+
+      byId("analysisAnnual").textContent = money.format(annual);
+      byId("analysisLoaded").textContent = money.format(loaded);
+      byId("analysisBudget").innerHTML = underBudget
+        ? `<span class="success">${money.format(budgetDelta)} left</span>`
+        : `<span class="danger">${money.format(Math.abs(budgetDelta))} over</span>`;
+      byId("analysisSavings").innerHTML = loadedSavings >= 0
+        ? `<span class="${targetMet ? "success" : "warning"}">${money.format(loadedSavings)}</span>`
+        : `<span class="danger">-${money.format(Math.abs(loadedSavings))}</span>`;
+      byId("analysisTarget").innerHTML = targetMet
+        ? `<span class="success">Met by ${money.format(loadedSavings - settings.targetSavings)}</span>`
+        : `<span class="danger">${money.format(settings.targetSavings - loadedSavings)} short</span>`;
+
+      const topCosts = [...results]
+        .sort((a, b) => b.weeklyPay - a.weeklyPay)
+        .slice(0, 4)
+        .map(result => `<p>${result.person.name}: <strong>${money.format(result.weeklyPay)}</strong>/week, ${result.worked.toFixed(2)} worked hours</p>`)
+        .join("");
+      byId("costDrivers").innerHTML = topCosts;
+
+      const changes = results
+        .map(result => {
+          const change = result.worked - (baselineHours[result.index] || 0);
+          if (Math.abs(change) < 0.01) return "";
+          return `<p>${result.person.name}: <strong>${change >= 0 ? "+" : ""}${change.toFixed(2)} hours</strong> from master baseline.</p>`;
+        })
+        .filter(Boolean);
+
+      byId("changeSummary").innerHTML = changes.length
+        ? changes.join("")
+        : `<p>No hours changed from the saved master baseline.</p>`;
+      byId("changeSummary").innerHTML += `
+        <p><strong>Total current worked hours:</strong> ${payrollTotals.workedTotal.toFixed(2)}h</p>
+        <p><strong>Total CT payable hourly hours:</strong> ${payrollTotals.payableTotal.toFixed(2)}h</p>
+        <p><strong>Payroll savings vs ${money.format(settings.currentAnnualPayroll)}:</strong> ${money.format(payrollSavings)}</p>
+        <p><strong>Loaded-cost goal:</strong> ${money.format(targetLoadedCost)} or less; current loaded cost is ${money.format(loaded)}.</p>
+      `;
+    }
+
+    function markMasterWarnings(results) {
+      results.forEach(result => {
+        byId(`total_${result.index}`).textContent = result.worked.toFixed(2);
+        const change = result.worked - (baselineHours[result.index] || 0);
+        byId(`change_${result.index}`).innerHTML = Math.abs(change) >= 0.01
+          ? `<span class="pill orange">${change >= 0 ? "+" : ""}${change.toFixed(2)}h</span>`
+          : `<span class="pill green">No change</span>`;
+
+        result.daily.forEach((shift, dayIndex) => {
+          const note = byId(`note_${result.index}_${dayIndex}`);
+          const startCell = byId(`s_${result.index}_${dayIndex}`).parentElement;
+          const endCell = byId(`e_${result.index}_${dayIndex}`).parentElement;
+          startCell.classList.remove("changed");
+          endCell.classList.remove("changed");
+
+          const baseStart = originalStaff[result.index].shifts[dayIndex][0];
+          const baseEnd = originalStaff[result.index].shifts[dayIndex][1];
+          if (shift.start !== baseStart || shift.end !== baseEnd) {
+            startCell.classList.add("changed");
+            endCell.classList.add("changed");
+          }
+
+          if (!shift.start && !shift.end) {
+            note.innerHTML = `<span class="off-label">OFF</span>`;
+          } else if (shift.warning) {
+            note.innerHTML = `<span class="pill orange">4h min</span>`;
+          } else if ((shift.start && !shift.end) || (!shift.start && shift.end) || shift.worked === 0) {
+            note.innerHTML = `<span class="pill red">Fix time</span>`;
+          } else {
+            note.innerHTML = `<span class="pill green">${shift.worked.toFixed(2)}h</span>`;
+          }
+        });
+      });
+    }
+
+    function calculateAll() {
+      readScheduleFromDom();
+      const results = staff.map((person, index) => calculateEmployee(person, index, true));
+      const coverage = buildCoverage(results);
+      const coverageNotes = renderHeatmap(coverage);
+      const payrollTotals = renderPayroll(results);
+
+      markMasterWarnings(results);
+      renderTimetables(results);
+      renderAnalysis(results, payrollTotals);
+      renderCompliance(results, coverageNotes, payrollTotals);
+    }
+
+    function calculateBaseline() {
+      const settings = readSettings();
+      baselineHours = originalStaff.map((person, index) => calculateEmployee(person, index, false).worked);
+      baselineWeeklyPayroll = originalStaff
+        .map((person, index) => calculateEmployee(person, index, false).weeklyPay)
+        .reduce((sum, value) => sum + value, 0);
+    }
+
+    function setCurrentAsBaseline() {
+      originalStaff.splice(0, originalStaff.length, ...cloneData(staff));
+      calculateBaseline();
+      calculateAll();
+    }
+
+    function restoreDefault() {
+      staff = cloneData(originalStaff);
+      renderMaster();
+      calculateBaseline();
+      calculateAll();
+    }
+
+    // GitHub Auto-Save Functions
+    function updateGithubStatus(message, status = 'ready') {
+      const statusEl = byId('githubStatus');
+      statusEl.textContent = message;
+      statusEl.className = 'github-status ' + status;
+    }
+
+    async function saveToGithub() {
+      if (!GITHUB_CONFIG.token) {
+        const token = prompt('Enter your GitHub Personal Access Token:\nhttps://github.com/settings/tokens\n\nRequired scope: repo');
+        if (!token) return;
+        GITHUB_CONFIG.token = token;
+        localStorage.setItem('githubToken', token);
+      }
+
+      updateGithubStatus('Saving to GitHub...', 'saving');
+
+      try {
+        readScheduleFromDom();
+        const data = {
+          timestamp: new Date().toISOString(),
+          staff: staff,
+          settings: {
+            currentPayroll: byId("currentPayrollInput").value,
+            currentLoaded: byId("currentLoadedInput").value,
+            targetSavings: byId("targetSavingsInput").value,
+            budget: byId("budgetInput").value,
+            minimumPayroll: byId("minimumPayrollInput").value,
+            tax: byId("taxInput").value,
+            minimumWage: byId("minimumWageInput").value
+          }
+        };
+
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+        const fileName = 'schedule_data.json';
+
+        let sha = null;
+        try {
+          const existingResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${fileName}`,
+            { headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` } }
+          );
+          if (existingResponse.ok) {
+            sha = (await existingResponse.json()).sha;
+          }
+        } catch (e) {}
+
+        const payload = {
+          message: `Auto-save schedule - ${new Date().toLocaleString()}`,
+          content: content,
+          branch: GITHUB_CONFIG.branch,
+          ...(sha && { sha })
+        };
+
+        const response = await fetch(
+          `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${fileName}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${GITHUB_CONFIG.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (response.ok) {
+          updateGithubStatus('✓ Saved to GitHub', 'saved');
+          setTimeout(() => updateGithubStatus('Ready'), 3000);
+        } else {
+          throw new Error(`GitHub API error: ${response.status}`);
+        }
+      } catch (error) {
+        updateGithubStatus('✗ Error: ' + error.message, 'error');
+        console.error('GitHub save error:', error);
+      }
+    }
+
+    function scheduleAutoSave() {
+      if (autoSaveTimer) clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => {
+        if (GITHUB_CONFIG.token) {
+          saveToGithub();
+        }
+      }, 5000);
+    }
+
+    document.querySelectorAll(".tab").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+        document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
+        button.classList.add("active");
+        byId(button.dataset.tab).classList.add("active");
+        calculateAll();
+      });
+    });
+
+    byId("saveBaseline").addEventListener("click", setCurrentAsBaseline);
+    byId("restoreDefault").addEventListener("click", restoreDefault);
+    byId("saveToGithub").addEventListener("click", saveToGithub);
+
+    // Budget controls auto-save
+    ['currentPayrollInput', 'currentLoadedInput', 'targetSavingsInput', 'budgetInput', 'minimumPayrollInput', 'taxInput', 'minimumWageInput'].forEach(id => {
+      byId(id).addEventListener('input', () => {
+        calculateAll();
+        scheduleAutoSave();
+      });
+    });
+
+    renderMaster();
+    calculateBaseline();
+    calculateAll();
+  </script>
 </body>
 </html>
