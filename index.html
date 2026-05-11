@@ -208,6 +208,11 @@
     .role-cell { min-width: 110px; }
     .rate-cell { min-width: 110px; }
 
+    .rate-input {
+      min-width: 100px;
+      font-weight: 800;
+    }
+
     .shift-cell {
       width: 92px;
       min-width: 92px;
@@ -821,11 +826,11 @@
         const tr = document.createElement("tr");
         if (person.manager) tr.className = "manager-row";
 
-        const rateLabel = person.type === "salary" ? `${money.format(person.rate)}/yr` : `${money.format(person.rate)}/hr`;
+        const rateSuffix = person.type === "salary" ? "/yr" : "/hr";
         tr.innerHTML = `
           <td class="person-cell">${person.name}<div class="muted">${person.role}</div></td>
           <td class="role-cell">${person.type === "salary" ? "Salary" : "Hourly"}</td>
-          <td class="rate-cell">${rateLabel}</td>
+          <td class="rate-cell"><input type="number" class="rate-input" id="rate_${personIndex}" value="${person.rate}" step="${person.type === 'salary' ? '100' : '0.01'}" min="0">${rateSuffix}</td>
         `;
 
         DAYS.forEach((day, dayIndex) => {
@@ -866,10 +871,28 @@
           scheduleAutoSave();
         });
       });
+
+      document.querySelectorAll(".rate-input").forEach(input => {
+        input.addEventListener("input", () => {
+          calculateAll();
+          scheduleAutoSave();
+        });
+        input.addEventListener("change", () => {
+          calculateAll();
+          scheduleAutoSave();
+        });
+      });
     }
 
     function readScheduleFromDom() {
       staff.forEach((person, personIndex) => {
+        // Update rate from DOM
+        const rateInput = byId(`rate_${personIndex}`);
+        if (rateInput) {
+          person.rate = Number(rateInput.value) || person.rate;
+        }
+        
+        // Update shifts from DOM
         DAYS.forEach((day, dayIndex) => {
           person.shifts[dayIndex][0] = byId(`s_${personIndex}_${dayIndex}`).value;
           person.shifts[dayIndex][1] = byId(`e_${personIndex}_${dayIndex}`).value;
@@ -1252,9 +1275,13 @@
 
       try {
         readScheduleFromDom();
+        const staffWithRates = staff.map(person => ({
+          ...person,
+          rate: person.rate
+        }));
         const data = {
           timestamp: new Date().toISOString(),
-          staff: staff,
+          staff: staffWithRates,
           settings: {
             currentPayroll: byId("currentPayrollInput").value,
             currentLoaded: byId("currentLoadedInput").value,
