@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-11T23:49:00.488Z",
+  "timestamp": "2026-05-11T23:49:14.042Z",
   "staff": [
     {
       "name": "Store Manager",
@@ -9,7 +9,7 @@
       "manager": true,
       "shifts": [
         [
-          "09:00",
+          "08:30",
           "18:30"
         ],
         [
