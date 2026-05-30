@@ -381,6 +381,7 @@
       <button class="tab" data-tab="heatmap">Floor Coverage Heatmap</button>
       <button class="tab" data-tab="payroll">Weekly Payroll Breakdown</button>
       <button class="tab" data-tab="analysis">Financial Analysis</button>
+      <button class="tab" data-tab="tax">Employer Tax Breakdown</button>
       <button class="tab" data-tab="compliance">CT Compliance Report</button>
       <button class="tab" data-tab="timetables">Employee Timetables</button>
     </nav>
@@ -425,6 +426,8 @@
           <button class="action primary" id="saveBaseline">Set Current Schedule As New Master</button>
           <button class="action" id="restoreDefault">Restore Starting Schedule</button>
           <button class="action" id="saveToGithub">💾 Save to GitHub</button>
+          <button class="action" id="testGithubToken">🔑 Test GitHub Token</button>
+          <button class="action" id="clearGithubToken">✖ Clear Token</button>
           <button class="action" onclick="window.print()">Print</button>
         </div>
 
@@ -548,11 +551,83 @@
         </div>
       </section>
 
+      <section id="tax" class="section">
+        <h2>Employer Tax Breakdown</h2>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <p class="muted">Shows per-employee employer-side taxes/loaded costs using the configured employer cost percentage.</p>
+              <div>
+                <button class="action" id="exportTaxCsv">Export CSV</button>
+                <button class="action" id="printTaxReport">Print Tax Report</button>
+              </div>
+            </div>
+                  <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                    <label style="font-size:13px;">Employer Social Security % <input id="employerSSInput" type="number" value="6.20" step="0.01" style="width:90px;margin-left:6px"> </label>
+                    <label style="font-size:13px;">Employer Medicare % <input id="employerMedicareInput" type="number" value="1.45" step="0.01" style="width:90px;margin-left:6px"> </label>
+                    <label style="font-size:13px;">FUTA % <input id="employerFutaInput" type="number" value="0.60" step="0.01" style="width:90px;margin-left:6px"> </label>
+                    <label style="font-size:13px;">CT SUTA % <input id="employerSutaInput" type="number" value="2.50" step="0.01" style="width:90px;margin-left:6px"> </label>
+                    <div class="muted" style="margin-left:8px;font-size:12px;">(Edit rates to match your carrier / state table)</div>
+                  </div>
+            <div class="table-wrap">
+              <table class="wide-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Weekly Pay</th>
+                    <th>Annual Pay</th>
+                    <th>SS %</th>
+                    <th>SS (weekly)</th>
+                    <th>SS (annual)</th>
+                    <th>Med %</th>
+                    <th>Med (weekly)</th>
+                    <th>Med (annual)</th>
+                    <th>FUTA %</th>
+                    <th>FUTA (weekly)</th>
+                    <th>FUTA (annual)</th>
+                    <th>CT SUTA %</th>
+                    <th>CT SUTA (weekly)</th>
+                    <th>CT SUTA (annual)</th>
+                    <th>Employer Total (weekly)</th>
+                    <th>Employer Total (annual)</th>
+                    <th>Employer Tax %</th>
+                    <th>Share of Total Employer Tax</th>
+                  </tr>
+                </thead>
+                <tbody id="taxBody"></tbody>
+                <tfoot>
+                  <tr>
+                    <td><strong>Totals</strong></td>
+                    <td id="taxWeeklyTotal">-</td>
+                    <td id="taxAnnualTotal">-</td>
+                    <td></td>
+                    <td id="taxSSWeeklyTotal">-</td>
+                    <td id="taxSSAnnualTotal">-</td>
+                    <td></td>
+                    <td id="taxMedWeeklyTotal">-</td>
+                    <td id="taxMedAnnualTotal">-</td>
+                    <td></td>
+                    <td id="taxFutaWeeklyTotal">-</td>
+                    <td id="taxFutaAnnualTotal">-</td>
+                    <td></td>
+                    <td id="taxSutaWeeklyTotal">-</td>
+                    <td id="taxSutaAnnualTotal">-</td>
+                    <td id="taxEmployerWeeklyTotal">-</td>
+                    <td id="taxEmployerTotal">-</td>
+                    <td></td>
+                    <td id="taxShareTotal">100%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+      </section>
+
       <section id="analysis" class="section">
         <h2>Financial & Compliance Analysis</h2>
         <div class="grid">
           <div class="card stat">Annual payroll<strong id="analysisAnnual">$0.00</strong></div>
           <div class="card stat">Employer cost estimate<strong id="analysisLoaded">$0.00</strong></div>
+          <div class="card stat">Employer tax total<strong id="analysisEmployerTax">$0.00</strong></div>
           <div class="card stat">Budget result<strong id="analysisBudget">Checking</strong></div>
           <div class="card stat">Savings vs $210K loaded<strong id="analysisSavings">$0.00</strong></div>
           <div class="card stat">$40K savings target<strong id="analysisTarget">Checking</strong></div>
@@ -705,6 +780,9 @@
       token: localStorage.getItem('githubToken') || ''
     };
 
+    // Cache for tax breakdown export
+    let taxLastData = [];
+
     let autoSaveTimer = null;
 
     function cloneData(data) {
@@ -751,7 +829,11 @@
         budget: Number(byId("budgetInput").value) || 0,
         minimumAnnualPayroll: Number(byId("minimumPayrollInput").value) || 0,
         employerCostPercent: Number(byId("taxInput").value) || 0,
-        minimumWage: Number(byId("minimumWageInput").value) || 0
+        minimumWage: Number(byId("minimumWageInput").value) || 0,
+        employerSSPct: Number((byId('employerSSInput') && byId('employerSSInput').value) || 6.2),
+        employerMedPct: Number((byId('employerMedicareInput') && byId('employerMedicareInput').value) || 1.45),
+        employerFutaPct: Number((byId('employerFutaInput') && byId('employerFutaInput').value) || 0.6),
+        employerSutaPct: Number((byId('employerSutaInput') && byId('employerSutaInput').value) || 2.5)
       };
     }
 
@@ -1151,6 +1233,8 @@
 
       byId("analysisAnnual").textContent = money.format(annual);
       byId("analysisLoaded").textContent = money.format(loaded);
+      const employerTaxTotal = loaded - annual; // loaded includes employer tax; employer tax = loaded - base annual
+      byId("analysisEmployerTax").textContent = money.format(employerTaxTotal);
       byId("analysisBudget").innerHTML = underBudget
         ? `<span class="success">${money.format(budgetDelta)} left</span>`
         : `<span class="danger">${money.format(Math.abs(budgetDelta))} over</span>`;
@@ -1185,6 +1269,164 @@
         <p><strong>Payroll savings vs ${money.format(settings.currentAnnualPayroll)}:</strong> ${money.format(payrollSavings)}</p>
         <p><strong>Loaded-cost goal:</strong> ${money.format(targetLoadedCost)} or less; current loaded cost is ${money.format(loaded)}.</p>
       `;
+
+      // also populate tax breakdown details
+      try {
+        renderTaxBreakdown(results, payrollTotals);
+      } catch (e) {
+        console.error('renderTaxBreakdown error:', e);
+      }
+    }
+
+    function renderTaxBreakdown(results, payrollTotals) {
+      const settings = readSettings();
+      const body = byId('taxBody');
+      if (!body) return;
+      body.innerHTML = '';
+      let weeklyTotal = 0;
+      let annualTotal = 0;
+      let ssTotal = 0;
+      let medTotal = 0;
+      let futaTotal = 0;
+      let sutaTotal = 0;
+
+      // compute totals using per-tax percentages
+      results.forEach(result => {
+        const weekly = result.weeklyPay || 0;
+        const annual = result.annualPay || (weekly * 52);
+        weeklyTotal += weekly;
+        annualTotal += annual;
+        ssTotal += annual * (settings.employerSSPct / 100);
+        medTotal += annual * (settings.employerMedPct / 100);
+        futaTotal += annual * (settings.employerFutaPct / 100);
+        sutaTotal += annual * (settings.employerSutaPct / 100);
+      });
+
+      const employerTotal = ssTotal + medTotal + futaTotal + sutaTotal;
+      taxLastData = [];
+
+      const ssWeeklyTotal = ssTotal / 52;
+      const medWeeklyTotal = medTotal / 52;
+      const futaWeeklyTotal = futaTotal / 52;
+      const sutaWeeklyTotal = sutaTotal / 52;
+      const employerWeeklyTotal = employerTotal / 52;
+
+      results.forEach(result => {
+        const weekly = result.weeklyPay || 0;
+        const annual = result.annualPay || (weekly * 52);
+        const ssAnnual = annual * (settings.employerSSPct / 100);
+        const medAnnual = annual * (settings.employerMedPct / 100);
+        const futaAnnual = annual * (settings.employerFutaPct / 100);
+        const sutaAnnual = annual * (settings.employerSutaPct / 100);
+        const ssWeekly = ssAnnual / 52;
+        const medWeekly = medAnnual / 52;
+        const futaWeekly = futaAnnual / 52;
+        const sutaWeekly = sutaAnnual / 52;
+        const employerAnnual = ssAnnual + medAnnual + futaAnnual + sutaAnnual;
+        const employerWeekly = employerAnnual / 52;
+        const employerPct = employerTotal > 0 ? (employerAnnual / annual) * 100 : settings.employerCostPercent;
+        const share = employerTotal > 0 ? (employerAnnual / employerTotal) * 100 : 0;
+
+        body.innerHTML += `
+          <tr>
+            <td>${result.person.name}</td>
+            <td>${money.format(weekly)}</td>
+            <td>${money.format(annual)}</td>
+            <td>${settings.employerSSPct.toFixed(2)}%</td>
+            <td>${money.format(ssWeekly)}</td>
+            <td>${money.format(ssAnnual)}</td>
+            <td>${settings.employerMedPct.toFixed(2)}%</td>
+            <td>${money.format(medWeekly)}</td>
+            <td>${money.format(medAnnual)}</td>
+            <td>${settings.employerFutaPct.toFixed(2)}%</td>
+            <td>${money.format(futaWeekly)}</td>
+            <td>${money.format(futaAnnual)}</td>
+            <td>${settings.employerSutaPct.toFixed(2)}%</td>
+            <td>${money.format(sutaWeekly)}</td>
+            <td>${money.format(sutaAnnual)}</td>
+            <td>${money.format(employerWeekly)}</td>
+            <td>${money.format(employerAnnual)}</td>
+            <td>${employerPct.toFixed(2)}%</td>
+            <td>${share.toFixed(2)}%</td>
+          </tr>`;
+
+        taxLastData.push({
+          name: result.person.name,
+          weeklyPay: weekly,
+          annualPay: annual,
+          ssWeekly, ssAnnual,
+          medWeekly, medAnnual,
+          futaWeekly, futaAnnual,
+          sutaWeekly, sutaAnnual,
+          employerWeekly, employerAnnual,
+          employerPct,
+          sharePct: share
+        });
+      });
+
+      byId('taxWeeklyTotal').textContent = weeklyTotal ? weeklyTotal.toFixed(2) : '-';
+      byId('taxAnnualTotal').textContent = annualTotal ? money.format(annualTotal) : '-';
+      byId('taxSSWeeklyTotal').textContent = ssWeeklyTotal ? money.format(ssWeeklyTotal) : '-';
+      byId('taxSSAnnualTotal').textContent = ssTotal ? money.format(ssTotal) : '-';
+      byId('taxMedWeeklyTotal').textContent = medWeeklyTotal ? money.format(medWeeklyTotal) : '-';
+      byId('taxMedAnnualTotal').textContent = medTotal ? money.format(medTotal) : '-';
+      byId('taxFutaWeeklyTotal').textContent = futaWeeklyTotal ? money.format(futaWeeklyTotal) : '-';
+      byId('taxFutaAnnualTotal').textContent = futaTotal ? money.format(futaTotal) : '-';
+      byId('taxSutaWeeklyTotal').textContent = sutaWeeklyTotal ? money.format(sutaWeeklyTotal) : '-';
+      byId('taxSutaAnnualTotal').textContent = sutaTotal ? money.format(sutaTotal) : '-';
+      byId('taxEmployerWeeklyTotal').textContent = employerWeeklyTotal ? money.format(employerWeeklyTotal) : '-';
+      byId('taxEmployerTotal').textContent = employerTotal ? money.format(employerTotal) : '-';
+    }
+
+    function exportTaxCsv() {
+      if (!taxLastData || !taxLastData.length) {
+        updateGithubStatus('No tax data to export', 'error');
+        return;
+      }
+      const headers = ['Employee','Weekly Pay','Annual Pay','SS %','SS Weekly','SS Annual','Med %','Med Weekly','Med Annual','FUTA %','FUTA Weekly','FUTA Annual','CT SUTA %','SUTA Weekly','SUTA Annual','Employer Weekly','Employer Annual','Employer %','Share %'];
+      const rows = taxLastData.map(r => [
+        r.name,
+        r.weeklyPay.toFixed(2),
+        r.annualPay.toFixed(2),
+        r.ssAnnual ? ( (r.ssAnnual / r.annualPay)*100 ).toFixed(2) : (r.ssAnnual===0? '0.00' : ''),
+        r.ssWeekly.toFixed(2),
+        r.ssAnnual.toFixed(2),
+        r.medAnnual ? ((r.medAnnual / r.annualPay)*100).toFixed(2) : (r.medAnnual===0? '0.00' : ''),
+        r.medWeekly.toFixed(2),
+        r.medAnnual.toFixed(2),
+        r.futaAnnual ? ((r.futaAnnual / r.annualPay)*100).toFixed(2) : (r.futaAnnual===0? '0.00' : ''),
+        r.futaWeekly.toFixed(2),
+        r.futaAnnual.toFixed(2),
+        r.sutaAnnual ? ((r.sutaAnnual / r.annualPay)*100).toFixed(2) : (r.sutaAnnual===0? '0.00' : ''),
+        r.sutaWeekly.toFixed(2),
+        r.sutaAnnual.toFixed(2),
+        r.employerWeekly.toFixed(2),
+        r.employerAnnual.toFixed(2),
+        r.employerPct ? r.employerPct.toFixed(2) : '',
+        r.sharePct.toFixed(2)
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'employer_tax_breakdown.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function printTaxReport() {
+      // Activate tax tab then trigger print
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+      const taxTab = document.querySelector('.tab[data-tab="tax"]');
+      if (taxTab) taxTab.classList.add('active');
+      const taxSection = byId('tax');
+      if (taxSection) taxSection.classList.add('active');
+      // allow layout to settle
+      setTimeout(() => window.print(), 200);
     }
 
     function markMasterWarnings(results) {
@@ -1263,10 +1505,28 @@
       statusEl.className = 'github-status ' + status;
     }
 
+    function extractGitHubHeaders(resp) {
+      try {
+        const sso = resp.headers.get('x-github-sso') || resp.headers.get('X-GitHub-SSO');
+        const oauth = resp.headers.get('x-oauth-scopes') || resp.headers.get('X-OAuth-Scopes');
+        const accepted = resp.headers.get('x-accepted-oauth-scopes') || resp.headers.get('X-Accepted-OAuth-Scopes');
+        const limit = resp.headers.get('x-ratelimit-remaining') || resp.headers.get('X-RateLimit-Remaining');
+        const parts = [];
+        if (sso) parts.push(`SSO:${sso}`);
+        if (oauth) parts.push(`Scopes:${oauth}`);
+        if (accepted) parts.push(`Accepted:${accepted}`);
+        if (limit) parts.push(`RateLimitRemaining:${limit}`);
+        return parts.join(' | ');
+      } catch (e) {
+        return '';
+      }
+    }
+
     async function saveToGithub() {
       if (!GITHUB_CONFIG.token) {
-        const token = prompt('Enter your GitHub Personal Access Token:\nhttps://github.com/settings/tokens\n\nRequired scope: repo');
+        let token = prompt('Enter your GitHub Personal Access Token:\nhttps://github.com/settings/tokens\n\nRequired scope: repo');
         if (!token) return;
+        token = token.trim();
         GITHUB_CONFIG.token = token;
         localStorage.setItem('githubToken', token);
       }
@@ -1304,8 +1564,15 @@
           );
           if (existingResponse.ok) {
             sha = (await existingResponse.json()).sha;
+          } else if (existingResponse.status !== 404) {
+            const errBody = await existingResponse.json().catch(() => null);
+            const hdr = extractGitHubHeaders(existingResponse);
+            console.error('GitHub API existing file response headers:', hdr);
+            throw new Error(`GitHub API error: ${existingResponse.status} ${errBody && errBody.message ? errBody.message : ''} ${hdr}`);
           }
-        } catch (e) {}
+        } catch (e) {
+          throw e;
+        }
 
         const payload = {
           message: `Auto-save schedule - ${new Date().toLocaleString()}`,
@@ -1330,11 +1597,56 @@
           updateGithubStatus('✓ Saved to GitHub', 'saved');
           setTimeout(() => updateGithubStatus('Ready'), 3000);
         } else {
-          throw new Error(`GitHub API error: ${response.status}`);
+          let errBody = null;
+          try { errBody = await response.json(); } catch (e) { /* ignore */ }
+          const hdr = extractGitHubHeaders(response);
+          console.error('GitHub API save response headers:', hdr);
+          throw new Error(`GitHub API error: ${response.status} ${errBody && errBody.message ? errBody.message : ''} ${hdr}`);
         }
       } catch (error) {
         updateGithubStatus('✗ Error: ' + error.message, 'error');
         console.error('GitHub save error:', error);
+        // store draft locally so no work is lost
+        try {
+          if (typeof payload !== 'undefined') {
+            saveLocalDraft(payload);
+            updateGithubStatus('Saved locally (offline)', 'warning');
+          }
+        } catch (e) {
+          console.error('Failed to save local draft:', e);
+        }
+      }
+    }
+
+    function saveLocalDraft(payload) {
+      try {
+        localStorage.setItem('scheduleDataDraft', JSON.stringify(payload));
+      } catch (e) {
+        console.error('Error saving draft to localStorage', e);
+      }
+    }
+
+    function saveLocalDraftFromDom() {
+      try {
+        readScheduleFromDom();
+        const staffWithRates = staff.map(person => ({ ...person, rate: person.rate }));
+        const data = {
+          timestamp: new Date().toISOString(),
+          staff: staffWithRates,
+          settings: {
+            currentPayroll: byId("currentPayrollInput").value,
+            currentLoaded: byId("currentLoadedInput").value,
+            targetSavings: byId("targetSavingsInput").value,
+            budget: byId("budgetInput").value,
+            minimumPayroll: byId("minimumPayrollInput").value,
+            tax: byId("taxInput").value,
+            minimumWage: byId("minimumWageInput").value
+          }
+        };
+        saveLocalDraft(data);
+        updateGithubStatus('Saved locally (draft)', 'warning');
+      } catch (e) {
+        console.error('Error creating local draft from DOM', e);
       }
     }
 
@@ -1343,8 +1655,49 @@
       autoSaveTimer = setTimeout(() => {
         if (GITHUB_CONFIG.token) {
           saveToGithub();
+        } else {
+          // Prompt user for token to enable GitHub auto-save; if declined, save locally
+          const token = prompt('No GitHub token set. Paste a Personal Access Token to enable GitHub auto-save, or press Cancel to save locally.');
+          if (token) {
+            GITHUB_CONFIG.token = token.trim();
+            localStorage.setItem('githubToken', GITHUB_CONFIG.token);
+            saveToGithub();
+          } else {
+            saveLocalDraftFromDom();
+          }
         }
       }, 5000);
+    }
+
+    // Test and clear GitHub token utilities
+    async function testGithubToken() {
+      if (!GITHUB_CONFIG.token) {
+        updateGithubStatus('No token set', 'error');
+        return;
+      }
+      updateGithubStatus('Testing token...', 'saving');
+      try {
+        const resp = await fetch('https://api.github.com/user', {
+          headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` }
+        });
+        if (resp.ok) {
+          const user = await resp.json();
+          updateGithubStatus(`Token OK: ${user.login}`, 'saved');
+          setTimeout(() => updateGithubStatus('Ready'), 3000);
+        } else {
+          let body = null;
+          try { body = await resp.json(); } catch (e) { /* ignore */ }
+          updateGithubStatus(`✗ ${resp.status} ${body && body.message ? body.message : ''}`, 'error');
+        }
+      } catch (e) {
+        updateGithubStatus('✗ Error: ' + e.message, 'error');
+      }
+    }
+
+    function clearGithubToken() {
+      GITHUB_CONFIG.token = '';
+      localStorage.removeItem('githubToken');
+      updateGithubStatus('Cleared token', 'ready');
     }
 
     document.querySelectorAll(".tab").forEach(button => {
@@ -1360,6 +1713,51 @@
     byId("saveBaseline").addEventListener("click", setCurrentAsBaseline);
     byId("restoreDefault").addEventListener("click", restoreDefault);
     byId("saveToGithub").addEventListener("click", saveToGithub);
+    byId("testGithubToken").addEventListener("click", testGithubToken);
+    byId("clearGithubToken").addEventListener("click", clearGithubToken);
+    const exportBtn = byId('exportTaxCsv');
+    if (exportBtn) exportBtn.addEventListener('click', exportTaxCsv);
+    const printBtn = byId('printTaxReport');
+    if (printBtn) printBtn.addEventListener('click', printTaxReport);
+
+    // On load: check for a local draft and offer to load it
+    const draft = localStorage.getItem('scheduleDataDraft');
+    if (draft) {
+      try {
+        const shouldLoad = confirm('A local draft was found from a previous session. Load it now?');
+        if (shouldLoad) {
+          const parsed = JSON.parse(draft);
+          if (parsed && parsed.staff) {
+            staff = parsed.staff;
+            // apply settings if present
+            if (parsed.settings) {
+              byId('currentPayrollInput').value = parsed.settings.currentPayroll || byId('currentPayrollInput').value;
+              byId('currentLoadedInput').value = parsed.settings.currentLoaded || byId('currentLoadedInput').value;
+              byId('targetSavingsInput').value = parsed.settings.targetSavings || byId('targetSavingsInput').value;
+              byId('budgetInput').value = parsed.settings.budget || byId('budgetInput').value;
+              byId('minimumPayrollInput').value = parsed.settings.minimumPayroll || byId('minimumPayrollInput').value;
+              byId('taxInput').value = parsed.settings.tax || byId('taxInput').value;
+              byId('minimumWageInput').value = parsed.settings.minimumWage || byId('minimumWageInput').value;
+            }
+            renderMaster();
+            calculateBaseline();
+            calculateAll();
+            updateGithubStatus('Loaded local draft', 'saved');
+          }
+        }
+      } catch (e) {
+        console.error('Error loading draft', e);
+      }
+    }
+
+    // Save a local draft on unload to avoid data loss
+    window.addEventListener('beforeunload', () => {
+      try {
+        saveLocalDraftFromDom();
+      } catch (e) {
+        // ignore
+      }
+    });
 
     // Budget controls auto-save
     ['currentPayrollInput', 'currentLoadedInput', 'targetSavingsInput', 'budgetInput', 'minimumPayrollInput', 'taxInput', 'minimumWageInput'].forEach(id => {
@@ -1367,6 +1765,12 @@
         calculateAll();
         scheduleAutoSave();
       });
+    });
+
+    // Employer tax inputs - trigger recalculation
+    ['employerSSInput','employerMedicareInput','employerFutaInput','employerSutaInput'].forEach(id => {
+      const el = byId(id);
+      if (el) el.addEventListener('input', () => { calculateAll(); scheduleAutoSave(); });
     });
 
     renderMaster();
